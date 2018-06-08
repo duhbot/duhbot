@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<logbot>
+	<servers>
+		<server addr="irc.example.org" port="6667" ssl="false" pass="">
+			<channel name="#aplace" pass="" />
+		</server>
+	</servers>
+	<nick>Bot</nick>
+	<nick>Bot_</nick>
+	<nick>Bot__</nick>
+	<nick>Bot___</nick>
+</logbot>
