@@ -54,7 +54,7 @@ public class PluginLoader {
 		for (String plugin : plugins) {
 			java.util.Date date = new java.util.Date();
 			Timestamp derp = new Timestamp(date.getTime());
-			System.out.printf("%s | Loading: %s\n", derp.toString(), plugin);
+			System.err.printf("%s | Loading: %s\n", derp.toString(), plugin);
 			ListenerAdapter newPlug = loadPlugin(plugin);
 			this.plugins.add(newPlug);
 		}
@@ -71,7 +71,6 @@ public class PluginLoader {
 			String mainClassName = (attr != null ? attr.getValue(Attributes.Name.MAIN_CLASS) : null);
 			@SuppressWarnings("rawtypes")
 			Class c = ucl.loadClass(mainClassName);
-			ucl.close();
 			DuhbotFunction func = (DuhbotFunction) c.newInstance();
 			int helpTopics = 0;
 
@@ -84,11 +83,12 @@ public class PluginLoader {
 			java.util.Date date = new java.util.Date();
 			Timestamp derp = new Timestamp(date.getTime());
 			if (helpTopics > 0) {
-				System.out.printf("%s | Loaded: %s; registered %d help functions\n", derp.toString(), filename,
+				System.err.printf("%s | Loaded: %s; registered %d help functions\n", derp.toString(), filename,
 						helpTopics);
 			} else {
-				System.out.printf("%s | Loaded: %s\n", derp.toString(), filename);
+				System.err.printf("%s | Loaded: %s\n", derp.toString(), filename);
 			}
+			ucl.close();
 		} catch (MalformedURLException mfue) {
 			java.util.Date date = new java.util.Date();
 			Timestamp derp = new Timestamp(date.getTime());

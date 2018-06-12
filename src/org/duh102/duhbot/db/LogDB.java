@@ -22,7 +22,6 @@ public class LogDB {
 				stat.executeUpdate(
 						"create table if not exists logEntry (server varchar(128), channel varchar(128) default 'null', logID INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, type INTEGER, data0 varchar(1024), data1 varchar(1024));");
 				conn.close();
-				System.err.printf("Inserted something\n");
 			} catch (java.sql.SQLException sqle) {
 				sqle.printStackTrace();
 			}

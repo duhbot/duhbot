@@ -3,3 +3,4 @@ config.xml
 /target/
 irc_log.db
 /output/
+/plugins/

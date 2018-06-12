@@ -10,7 +10,6 @@ import org.duh102.duhbot.db.*;
 public class LogBotListener extends ListenerAdapter implements DuhbotFunction {
 	public LogBotListener() {
 		LogDB.createTables();
-		System.err.printf("Started up the LogDB\n");
 	}
 
 	public DuhbotFunction factory() {

@@ -20,7 +20,6 @@ public class DuhBot {
 		DuhBot bot = new DuhBot();
 		java.util.Date date = new java.util.Date();
 		Timestamp derp = new Timestamp(date.getTime());
-		System.out.println("Bot started: " + derp);
 		System.err.println("Bot started: " + derp);
 	}
 
