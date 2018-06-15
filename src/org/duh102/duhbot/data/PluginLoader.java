@@ -88,7 +88,6 @@ public class PluginLoader {
 			} else {
 				System.err.printf("%s | Loaded: %s\n", derp.toString(), filename);
 			}
-			ucl.close();
 		} catch (MalformedURLException mfue) {
 			java.util.Date date = new java.util.Date();
 			Timestamp derp = new Timestamp(date.getTime());
