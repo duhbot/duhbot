@@ -1,6 +1,3 @@
 config.xml
-/bin/
 /target/
-irc_log.db
-/output/
-/plugins/
+.*.swp
