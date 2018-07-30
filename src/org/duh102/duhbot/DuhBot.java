@@ -43,6 +43,9 @@ public class DuhBot {
 			if (server.password.length() > 0) {
 				newConfig.setServerPassword(server.password);
 			}
+      if( server.ssl ) {
+        newConfig.setSocketFactory((new UtilSSLSocketFactory()).trustAllCertificates());
+      }
 			newConfig.setAutoNickChange(true);
 			newConfig.setName(config.preferredNicks.get(0));
 			for (IRCChannel channel : server.channels) {

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>DuhBot</groupId>
   <artifactId>DuhBot</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
   <name>DuhBot.jar</name>
   <build>
     <sourceDirectory>src</sourceDirectory>
@@ -73,5 +73,12 @@
   		<artifactId>sqlite-jdbc</artifactId>
   		<version>3.23.1</version>
   	</dependency>
+    <!--
+    <dependency>
+  		<groupId>org.slf4j</groupId>
+  		<artifactId>slf4j-simple</artifactId>
+  		<version>1.7.13</version>
+    </dependency>
+    -->
   </dependencies>
 </project>
