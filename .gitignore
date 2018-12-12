@@ -1,3 +1,5 @@
 config.xml
 /target/
 .*.swp
+
+/.idea

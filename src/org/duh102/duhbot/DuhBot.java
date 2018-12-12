@@ -3,24 +3,22 @@ package org.duh102.duhbot;
 import java.sql.Timestamp;
 
 import org.pircbotx.*;
+import org.pircbotx.delay.AdaptingDelay;
 import org.pircbotx.hooks.*;
 
 import com.google.common.collect.ImmutableList;
 
-import org.duh102.duhbot.db.*;
 import org.duh102.duhbot.data.*;
 import org.duh102.duhbot.functions.*;
 
 public class DuhBot {
-	LogDB database;
-	ConfigData config;
+	private ConfigData config;
 
-	public static void main(String args[]) {
-		@SuppressWarnings("unused")
-		DuhBot bot = new DuhBot();
+	public static void main(String[] args) {
+		new DuhBot();
 		java.util.Date date = new java.util.Date();
-		Timestamp derp = new Timestamp(date.getTime());
-		System.err.println("Bot started: " + derp);
+		Timestamp now = new Timestamp(date.getTime());
+		System.err.println("Bot started: " + now);
 	}
 
 	public DuhBot() {
@@ -59,7 +57,7 @@ public class DuhBot {
 				newConfig.addListener(plugin);
 			}
 			newConfig.setAutoReconnect(true);
-			newConfig.setAutoReconnectDelay(20);
+			newConfig.setAutoReconnectDelay(new AdaptingDelay(1000, 20000));
 			multiBot.addBot(newConfig.buildConfiguration());
 		}
 		multiBot.start();
