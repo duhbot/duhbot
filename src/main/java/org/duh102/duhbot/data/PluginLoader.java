@@ -6,6 +6,8 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.util.jar.*;
 
+import com.google.common.collect.ImmutableMap;
+import org.duh102.duhbot.exception.DuplicateEndpointException;
 import org.pircbotx.hooks.*;
 
 import com.google.common.collect.ImmutableList;
@@ -16,11 +18,15 @@ public class PluginLoader {
 	public static final String PLUGIN_LOC = "./plugins/";
 
 	HelpFunction help;
-	ArrayList<ListenerAdapter> plugins;
+	List<ListenerAdapter> plugins;
+	Map<String, InteractivePlugin> interactivePlugins;
+	List<PluginInteractor> pluginInteractors;
 
 	public PluginLoader(HelpFunction help) {
 		this.help = help;
-		plugins = new ArrayList<ListenerAdapter>();
+		plugins = new ArrayList<>();
+		interactivePlugins = new HashMap<>();
+		pluginInteractors = new ArrayList<>();
 	}
 
 	public List<String> getPluginsInDir() {
@@ -44,6 +50,12 @@ public class PluginLoader {
 
 	public ImmutableList<ListenerAdapter> getLoadedPlugins() {
 		return new ImmutableList.Builder<ListenerAdapter>().addAll(this.plugins).build();
+	}
+	public ImmutableMap<String, InteractivePlugin> getLoadedInteractions() {
+		return new ImmutableMap.Builder<String, InteractivePlugin>().putAll(this.interactivePlugins).build();
+	}
+	public ImmutableList<PluginInteractor> getLoadedInteractors() {
+		return new ImmutableList.Builder<PluginInteractor>().addAll(this.pluginInteractors).build();
 	}
 
 	public void loadAllPlugins() {
@@ -87,6 +99,35 @@ public class PluginLoader {
 						helpTopics);
 			} else {
 				System.err.printf("%s | Loaded: %s\n", derp.toString(), filename);
+			}
+			if( func instanceof InteractivePlugin) {
+				try {
+					InteractivePlugin pluginInteractible = (InteractivePlugin) func;
+					String endpoint = pluginInteractible.getEndpointRoot();
+					try {
+						if (interactivePlugins.containsKey(endpoint)) {
+							throw new DuplicateEndpointException(endpoint);
+						}
+						interactivePlugins.put(endpoint, pluginInteractible);
+					} catch( DuplicateEndpointException dee ) {
+						System.err.printf("%s | Endpoint %s already " +
+								"registered by %s\n", derp.toString(),
+								interactivePlugins.get(endpoint).getPluginName());
+					}
+				} catch( Exception e ) {
+					System.err.printf("%s | Unable to register plugin " +
+							"interactions: %s\n", derp.toString(),
+							e.getLocalizedMessage());
+				}
+			}
+			if( func instanceof PluginInteractor ) {
+				try {
+					pluginInteractors.add((PluginInteractor)func);
+				} catch( Exception e ) {
+					System.err.printf("%s | Unable to register plugin for " +
+							"interacting with other plugins: %s\n",
+							derp.toString(), e.getLocalizedMessage());
+				}
 			}
 		} catch (MalformedURLException mfue) {
 			java.util.Date date = new java.util.Date();
