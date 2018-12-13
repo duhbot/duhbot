@@ -90,7 +90,7 @@ public class DuhBot implements InteractionMediator {
 		}
 		InteractivePlugin interactive = interactivePlugins.get(endpoint);
 		Map<String, RegisteredInteraction> interactions = interactive.getInteractions();
-		if( !interactions.containsKey(path) ) {
+		if( interactions == null || !interactions.containsKey(path) ) {
 			throw new NoSuchPathForEndpointException(endpoint, path);
 		}
 		RegisteredInteraction interaction = interactions.get(path);
@@ -102,7 +102,7 @@ public class DuhBot implements InteractionMediator {
 		if( request.getClass() != requiredInput ) {
 			throw new MismatchedInteractionRequestClass(requiredInput, request.getClass());
 		}
-		InteractionResult response = interaction.interact(path, request);
+		InteractionResult response = interaction.interact(request);
 		return response;
 	}
 }
