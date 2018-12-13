@@ -19,7 +19,7 @@ import org.duh102.duhbot.functions.*;
 
 public class DuhBot implements InteractionMediator {
 	private ConfigData config;
-	private ImmutableMap<String, InteractionRegisterable> interactablePlugins;
+	private ImmutableMap<String, InteractivePlugin> interactivePlugins;
 
 	public static void main(String[] args) {
 		new DuhBot();
@@ -41,6 +41,19 @@ public class DuhBot implements InteractionMediator {
 		loader.loadAllPlugins();
 		ImmutableList<ListenerAdapter> allPlugins = new ImmutableList.Builder<ListenerAdapter>()
 				.add(helpPlugin).add(logPlugin).addAll(loader.getLoadedPlugins()).build();
+		ImmutableList<PluginInteractor> interactors =
+				loader.getLoadedInteractors();
+		for( PluginInteractor interactor : interactors ) {
+			try {
+				interactor.setInteraactionMediator(this);
+			} catch( Exception e ) {
+				java.util.Date date = new java.util.Date();
+				Timestamp derp = new Timestamp(date.getTime());
+				System.err.printf("%s | Unable to hook up plugin to mediator:" +
+						" %s\n", derp.toString(), e.getLocalizedMessage());
+			}
+		}
+		interactivePlugins = loader.getLoadedInteractions();
 
 		for (IRCServer server : config.servers) {
 			Configuration.Builder newConfig = new Configuration.Builder();
@@ -72,24 +85,24 @@ public class DuhBot implements InteractionMediator {
 
 	@Override
 	public InteractionResult<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedInteractionRequestClass, MismatchedInteractionResponseClass {
-		if(interactablePlugins == null || ! interactablePlugins.containsKey(endpoint)) {
+		if(interactivePlugins == null || ! interactivePlugins.containsKey(endpoint)) {
 			throw new NoSuchEndpointException(endpoint);
 		}
-		InteractionRegisterable interactive = interactablePlugins.get(endpoint);
+		InteractivePlugin interactive = interactivePlugins.get(endpoint);
 		Map<String, RegisteredInteraction> interactions = interactive.getInteractions();
 		if( !interactions.containsKey(path) ) {
 			throw new NoSuchPathForEndpointException(endpoint, path);
 		}
-		RegisteredInteraction interact = interactions.get(path);
-		Class<?> prescribedResponse = interact.getResponseClass();
+		RegisteredInteraction interaction = interactions.get(path);
+		Class<?> prescribedResponse = interaction.getResponseClass();
 		if( prescribedResponse != responseClass	) {
 			throw new MismatchedInteractionResponseClass(prescribedResponse, responseClass);
 		}
-		Class<?> requiredInput = interact.getRequestClass();
+		Class<?> requiredInput = interaction.getRequestClass();
 		if( request.getClass() != requiredInput ) {
 			throw new MismatchedInteractionRequestClass(requiredInput, request.getClass());
 		}
-		InteractionResult response = interact.interact(path, request);
+		InteractionResult response = interaction.interact(path, request);
 		return response;
 	}
 }

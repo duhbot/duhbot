@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.jar.*;
 
 import com.google.common.collect.ImmutableMap;
-import jdk.vm.ci.code.Register;
 import org.duh102.duhbot.exception.DuplicateEndpointException;
 import org.pircbotx.hooks.*;
 
@@ -20,11 +19,14 @@ public class PluginLoader {
 
 	HelpFunction help;
 	List<ListenerAdapter> plugins;
-	Map<String, InteractionRegisterable> interactibles;
+	Map<String, InteractivePlugin> interactivePlugins;
+	List<PluginInteractor> pluginInteractors;
 
 	public PluginLoader(HelpFunction help) {
 		this.help = help;
 		plugins = new ArrayList<>();
+		interactivePlugins = new HashMap<>();
+		pluginInteractors = new ArrayList<>();
 	}
 
 	public List<String> getPluginsInDir() {
@@ -49,8 +51,11 @@ public class PluginLoader {
 	public ImmutableList<ListenerAdapter> getLoadedPlugins() {
 		return new ImmutableList.Builder<ListenerAdapter>().addAll(this.plugins).build();
 	}
-	public ImmutableMap<String, InteractionRegisterable> getLoadedInteractions() {
-		return new ImmutableMap.Builder<String, InteractionRegisterable>().putAll(this.interactibles).build();
+	public ImmutableMap<String, InteractivePlugin> getLoadedInteractions() {
+		return new ImmutableMap.Builder<String, InteractivePlugin>().putAll(this.interactivePlugins).build();
+	}
+	public ImmutableList<PluginInteractor> getLoadedInteractors() {
+		return new ImmutableList.Builder<PluginInteractor>().addAll(this.pluginInteractors).build();
 	}
 
 	public void loadAllPlugins() {
@@ -95,20 +100,33 @@ public class PluginLoader {
 			} else {
 				System.err.printf("%s | Loaded: %s\n", derp.toString(), filename);
 			}
-			if( func instanceof InteractionRegisterable ) {
+			if( func instanceof InteractivePlugin) {
 				try {
-					InteractionRegisterable pluginInteractible = (InteractionRegisterable) func;
+					InteractivePlugin pluginInteractible = (InteractivePlugin) func;
 					String endpoint = pluginInteractible.getEndpointRoot();
 					try {
-						if (interactibles.containsKey(endpoint)) {
+						if (interactivePlugins.containsKey(endpoint)) {
 							throw new DuplicateEndpointException(endpoint);
 						}
-						interactibles.put(endpoint, pluginInteractible);
+						interactivePlugins.put(endpoint, pluginInteractible);
 					} catch( DuplicateEndpointException dee ) {
-						System.err.printf("%s | Endpoint %s already registered by %s", derp.toString(), interactibles.get(endpoint).getPluginName());
+						System.err.printf("%s | Endpoint %s already " +
+								"registered by %s\n", derp.toString(),
+								interactivePlugins.get(endpoint).getPluginName());
 					}
 				} catch( Exception e ) {
-					System.err.printf("%s | Unable to register plugin interactions: %s", derp.toString(), e.getLocalizedMessage());
+					System.err.printf("%s | Unable to register plugin " +
+							"interactions: %s\n", derp.toString(),
+							e.getLocalizedMessage());
+				}
+			}
+			if( func instanceof PluginInteractor ) {
+				try {
+					pluginInteractors.add((PluginInteractor)func);
+				} catch( Exception e ) {
+					System.err.printf("%s | Unable to register plugin for " +
+							"interacting with other plugins: %s\n",
+							derp.toString(), e.getLocalizedMessage());
 				}
 			}
 		} catch (MalformedURLException mfue) {
