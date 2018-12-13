@@ -6,6 +6,9 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.util.jar.*;
 
+import com.google.common.collect.ImmutableMap;
+import jdk.vm.ci.code.Register;
+import org.duh102.duhbot.exception.DuplicateEndpointException;
 import org.pircbotx.hooks.*;
 
 import com.google.common.collect.ImmutableList;
@@ -16,11 +19,12 @@ public class PluginLoader {
 	public static final String PLUGIN_LOC = "./plugins/";
 
 	HelpFunction help;
-	ArrayList<ListenerAdapter> plugins;
+	List<ListenerAdapter> plugins;
+	Map<String, InteractionRegisterable> interactibles;
 
 	public PluginLoader(HelpFunction help) {
 		this.help = help;
-		plugins = new ArrayList<ListenerAdapter>();
+		plugins = new ArrayList<>();
 	}
 
 	public List<String> getPluginsInDir() {
@@ -44,6 +48,9 @@ public class PluginLoader {
 
 	public ImmutableList<ListenerAdapter> getLoadedPlugins() {
 		return new ImmutableList.Builder<ListenerAdapter>().addAll(this.plugins).build();
+	}
+	public ImmutableMap<String, InteractionRegisterable> getLoadedInteractions() {
+		return new ImmutableMap.Builder<String, InteractionRegisterable>().putAll(this.interactibles).build();
 	}
 
 	public void loadAllPlugins() {
@@ -87,6 +94,22 @@ public class PluginLoader {
 						helpTopics);
 			} else {
 				System.err.printf("%s | Loaded: %s\n", derp.toString(), filename);
+			}
+			if( func instanceof InteractionRegisterable ) {
+				try {
+					InteractionRegisterable pluginInteractible = (InteractionRegisterable) func;
+					String endpoint = pluginInteractible.getEndpointRoot();
+					try {
+						if (interactibles.containsKey(endpoint)) {
+							throw new DuplicateEndpointException(endpoint);
+						}
+						interactibles.put(endpoint, pluginInteractible);
+					} catch( DuplicateEndpointException dee ) {
+						System.err.printf("%s | Endpoint %s already registered by %s", derp.toString(), interactibles.get(endpoint).getPluginName());
+					}
+				} catch( Exception e ) {
+					System.err.printf("%s | Unable to register plugin interactions: %s", derp.toString(), e.getLocalizedMessage());
+				}
 			}
 		} catch (MalformedURLException mfue) {
 			java.util.Date date = new java.util.Date();

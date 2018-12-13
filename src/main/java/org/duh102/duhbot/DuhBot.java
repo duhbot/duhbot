@@ -1,7 +1,13 @@
 package org.duh102.duhbot;
 
 import java.sql.Timestamp;
+import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
+import org.duh102.duhbot.exception.MismatchedInteractionRequestClass;
+import org.duh102.duhbot.exception.MismatchedInteractionResponseClass;
+import org.duh102.duhbot.exception.NoSuchEndpointException;
+import org.duh102.duhbot.exception.NoSuchPathForEndpointException;
 import org.pircbotx.*;
 import org.pircbotx.delay.AdaptingDelay;
 import org.pircbotx.hooks.*;
@@ -11,8 +17,9 @@ import com.google.common.collect.ImmutableList;
 import org.duh102.duhbot.data.*;
 import org.duh102.duhbot.functions.*;
 
-public class DuhBot {
+public class DuhBot implements InteractionMediator {
 	private ConfigData config;
+	private ImmutableMap<String, InteractionRegisterable> interactablePlugins;
 
 	public static void main(String[] args) {
 		new DuhBot();
@@ -61,5 +68,28 @@ public class DuhBot {
 			multiBot.addBot(newConfig.buildConfiguration());
 		}
 		multiBot.start();
+	}
+
+	@Override
+	public InteractionResult<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedInteractionRequestClass, MismatchedInteractionResponseClass {
+		if(interactablePlugins == null || ! interactablePlugins.containsKey(endpoint)) {
+			throw new NoSuchEndpointException(endpoint);
+		}
+		InteractionRegisterable interactive = interactablePlugins.get(endpoint);
+		Map<String, RegisteredInteraction> interactions = interactive.getInteractions();
+		if( !interactions.containsKey(path) ) {
+			throw new NoSuchPathForEndpointException(endpoint, path);
+		}
+		RegisteredInteraction interact = interactions.get(path);
+		Class<?> prescribedResponse = interact.getResponseClass();
+		if( prescribedResponse != responseClass	) {
+			throw new MismatchedInteractionResponseClass(prescribedResponse, responseClass);
+		}
+		Class<?> requiredInput = interact.getRequestClass();
+		if( request.getClass() != requiredInput ) {
+			throw new MismatchedInteractionRequestClass(requiredInput, request.getClass());
+		}
+		InteractionResult response = interact.interact(path, request);
+		return response;
 	}
 }
