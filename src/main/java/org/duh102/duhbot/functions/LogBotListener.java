@@ -7,7 +7,7 @@ import org.pircbotx.hooks.events.*;
 
 import org.duh102.duhbot.db.*;
 
-public class LogBotListener extends ListenerAdapter implements DuhbotFunction {
+public class LogBotListener extends ListenerAdapter implements DuhbotFunction, ListeningPlugin {
 	public LogBotListener() {
 		LogDB.createTables();
 	}

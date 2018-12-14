@@ -4,8 +4,8 @@ import java.sql.Timestamp;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import org.duh102.duhbot.exception.MismatchedInteractionRequestClass;
-import org.duh102.duhbot.exception.MismatchedInteractionResponseClass;
+import org.duh102.duhbot.exception.MismatchedServiceRequestClass;
+import org.duh102.duhbot.exception.MismatchedServiceResponseClass;
 import org.duh102.duhbot.exception.NoSuchEndpointException;
 import org.duh102.duhbot.exception.NoSuchPathForEndpointException;
 import org.pircbotx.*;
@@ -17,9 +17,9 @@ import com.google.common.collect.ImmutableList;
 import org.duh102.duhbot.data.*;
 import org.duh102.duhbot.functions.*;
 
-public class DuhBot implements InteractionMediator {
+public class DuhBot implements ServiceMediator {
 	private ConfigData config;
-	private ImmutableMap<String, InteractivePlugin> interactivePlugins;
+	private ImmutableMap<String, ServiceProviderPlugin> interactivePlugins;
 
 	public static void main(String[] args) {
 		new DuhBot();
@@ -41,9 +41,9 @@ public class DuhBot implements InteractionMediator {
 		loader.loadAllPlugins();
 		ImmutableList<ListenerAdapter> allPlugins = new ImmutableList.Builder<ListenerAdapter>()
 				.add(helpPlugin).add(logPlugin).addAll(loader.getLoadedPlugins()).build();
-		ImmutableList<PluginInteractor> interactors =
+		ImmutableList<ServiceConsumerPlugin> interactors =
 				loader.getLoadedInteractors();
-		for( PluginInteractor interactor : interactors ) {
+		for( ServiceConsumerPlugin interactor : interactors ) {
 			try {
 				interactor.setInteraactionMediator(this);
 			} catch( Exception e ) {
@@ -84,25 +84,25 @@ public class DuhBot implements InteractionMediator {
 	}
 
 	@Override
-	public InteractionResult<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedInteractionRequestClass, MismatchedInteractionResponseClass {
+	public ServiceResponse<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedServiceRequestClass, MismatchedServiceResponseClass {
 		if(interactivePlugins == null || ! interactivePlugins.containsKey(endpoint)) {
 			throw new NoSuchEndpointException(endpoint);
 		}
-		InteractivePlugin interactive = interactivePlugins.get(endpoint);
-		Map<String, RegisteredInteraction> interactions = interactive.getInteractions();
+		ServiceProviderPlugin interactive = interactivePlugins.get(endpoint);
+		Map<String, ServiceEndpointDefinition> interactions = interactive.getInteractions();
 		if( interactions == null || !interactions.containsKey(path) ) {
 			throw new NoSuchPathForEndpointException(endpoint, path);
 		}
-		RegisteredInteraction interaction = interactions.get(path);
+		ServiceEndpointDefinition interaction = interactions.get(path);
 		Class<?> prescribedResponse = interaction.getResponseClass();
 		if( prescribedResponse != responseClass	) {
-			throw new MismatchedInteractionResponseClass(prescribedResponse, responseClass);
+			throw new MismatchedServiceResponseClass(prescribedResponse, responseClass);
 		}
 		Class<?> requiredInput = interaction.getRequestClass();
 		if( request.getClass() != requiredInput ) {
-			throw new MismatchedInteractionRequestClass(requiredInput, request.getClass());
+			throw new MismatchedServiceRequestClass(requiredInput, request.getClass());
 		}
-		InteractionResult response = interaction.interact(request);
+		ServiceResponse response = interaction.interact(request);
 		return response;
 	}
 }
