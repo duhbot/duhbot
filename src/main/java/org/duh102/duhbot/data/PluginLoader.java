@@ -60,33 +60,52 @@ public class PluginLoader {
 		return new ImmutableList.Builder<ServiceConsumerPlugin>().addAll(this.consumerPlugins).build();
 	}
 
+	private static URL filenameToURL(String filename) {
+		try {
+			return (new File(PLUGIN_LOC + filename)).toURI().toURL();
+		} catch (MalformedURLException mfue) {
+			java.util.Date date = new java.util.Date();
+			Timestamp timestamp = new Timestamp(date.getTime());
+			System.err.printf("%s | Unable to turn filename %s into a URL\n",
+					timestamp.toString(), filename);
+			mfue.printStackTrace();
+			return null;
+		}
+	}
+
 	public void loadAllPlugins() {
 		List<String> plugins = getPluginsInDir();
 		if (plugins == null) {
 			return;
 		}
+		URL[] pluginURLs =
+				plugins.stream().map(PluginLoader::filenameToURL).filter(item -> item != null).toArray(URL[]::new);
+		URLClassLoader ucl = new URLClassLoader(pluginURLs,
+				getClass().getClassLoader());
 		for (String plugin : plugins) {
 			java.util.Date date = new java.util.Date();
 			Timestamp derp = new Timestamp(date.getTime());
 			System.err.printf("%s | Loading: %s\n", derp.toString(), plugin);
-			ListenerAdapter newPlug = loadPlugin(plugin);
-			this.listenerPlugins.add(newPlug);
-		}
+			ListenerAdapter newPlug = loadPlugin(plugin, ucl);
+			if( newPlug != null ) {
+				this.listenerPlugins.add(newPlug);
+			}
+		},
 	}
 
-	public ListenerAdapter loadPlugin(String filename) {
+	public ListenerAdapter loadPlugin(String filename,
+									  ClassLoader classLoader) {
 		ListenerAdapter toRet = null;
 		try {
 			java.util.Date date = new java.util.Date();
 			Timestamp timestamp = new Timestamp(date.getTime());
 			URL pluginURL = (new File(PLUGIN_LOC + filename)).toURI().toURL();
-			URLClassLoader ucl = new URLClassLoader(new URL[] { pluginURL }, getClass().getClassLoader());
 			URL u = new URL("jar", "", pluginURL + "!/");
 			JarURLConnection uc = (JarURLConnection) u.openConnection();
 			Attributes attr = uc.getMainAttributes();
 			String mainClassName = (attr != null ? attr.getValue(Attributes.Name.MAIN_CLASS) : null);
 			@SuppressWarnings("rawtypes")
-			Class<?> c = ucl.loadClass(mainClassName);
+			Class<?> c = classLoader.loadClass(mainClassName);
 			DuhbotFunction func = (DuhbotFunction) c.newInstance();
 
 			if (func != null) {
@@ -135,11 +154,6 @@ public class PluginLoader {
 							timestamp.toString(), e.getLocalizedMessage());
 				}
 			}
-		} catch (MalformedURLException mfue) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
-			mfue.printStackTrace();
 		} catch (IOException ioe) {
 			java.util.Date date = new java.util.Date();
 			Timestamp timestamp = new Timestamp(date.getTime());
