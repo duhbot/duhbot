@@ -1,10 +1,7 @@
 package org.duh102.duhbot.data;
 
 import com.google.common.collect.ImmutableMap;
-import org.duh102.duhbot.exception.MismatchedServiceRequestClass;
-import org.duh102.duhbot.exception.MismatchedServiceResponseClass;
-import org.duh102.duhbot.exception.NoSuchEndpointException;
-import org.duh102.duhbot.exception.NoSuchPathForEndpointException;
+import org.duh102.duhbot.exception.*;
 import org.duh102.duhbot.functions.ServiceEndpointDefinition;
 import org.duh102.duhbot.functions.ServiceMediator;
 import org.duh102.duhbot.functions.ServiceProviderPlugin;
@@ -18,25 +15,49 @@ public class UnsynchronizedMediator implements ServiceMediator {
         this.servicePlugins = servicePlugins;
     }
     @Override
-    public ServiceResponse<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedServiceRequestClass, MismatchedServiceResponseClass {
+    public ServiceResponse<?> interact(String endpoint, String path,
+                                       Object request,
+                                       Class<?> responseClass) throws
+            NoSuchEndpointException, NoSuchPathForEndpointException,
+            MismatchedServiceRequestClass, MismatchedServiceResponseClass,
+            ServiceProviderException {
         if (servicePlugins == null || !servicePlugins.containsKey(endpoint)) {
             throw new NoSuchEndpointException(endpoint);
         }
-        ServiceProviderPlugin interactive = servicePlugins.get(endpoint);
-        Map<String, ServiceEndpointDefinition> interactions = interactive.getInteractions();
+        ServiceProviderPlugin serviceProvider = servicePlugins.get(endpoint);
+        Map<String, ServiceEndpointDefinition> interactions;
+        try {
+            interactions = serviceProvider.getInteractions();
+        } catch( Exception e ) {
+            throw new ServiceProviderException(e);
+        }
         if (interactions == null || !interactions.containsKey(path)) {
             throw new NoSuchPathForEndpointException(endpoint, path);
         }
         ServiceEndpointDefinition interaction = interactions.get(path);
-        Class<?> prescribedResponse = interaction.getResponseClass();
+        Class<?> prescribedResponse;
+        try {
+            prescribedResponse = interaction.getResponseClass();
+        } catch( Exception e ) {
+            throw new ServiceProviderException(e);
+        }
         if (prescribedResponse != responseClass) {
             throw new MismatchedServiceResponseClass(prescribedResponse, responseClass);
         }
-        Class<?> requiredInput = interaction.getRequestClass();
+        Class<?> requiredInput;
+        try {
+            requiredInput = interaction.getRequestClass();
+        } catch( Exception e ) {
+            throw new ServiceProviderException(e);
+        }
         if (request.getClass() != requiredInput) {
             throw new MismatchedServiceRequestClass(requiredInput, request.getClass());
         }
-        ServiceResponse response = interaction.interact(request);
-        return response;
+        try {
+            ServiceResponse response = interaction.interact(request);
+            return response;
+        } catch(Exception e) {
+            throw new ServiceProviderException(e);
+        }
     }
 }
