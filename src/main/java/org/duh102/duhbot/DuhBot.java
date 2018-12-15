@@ -3,10 +3,6 @@ package org.duh102.duhbot;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import org.duh102.duhbot.exception.MismatchedServiceRequestClass;
-import org.duh102.duhbot.exception.MismatchedServiceResponseClass;
-import org.duh102.duhbot.exception.NoSuchEndpointException;
-import org.duh102.duhbot.exception.NoSuchPathForEndpointException;
 import org.pircbotx.*;
 import org.pircbotx.delay.AdaptingDelay;
 import org.pircbotx.hooks.*;
@@ -16,10 +12,10 @@ import com.google.common.collect.ImmutableList;
 import org.duh102.duhbot.data.*;
 import org.duh102.duhbot.functions.*;
 
-public class DuhBot implements ServiceMediator {
+public class DuhBot {
     private ConfigData config;
-    private ImmutableMap<String, ServiceProviderPlugin> servicePlugins;
     private MultiBotManager multiBot;
+    private ServiceMediator mediator;
 
     public static void main(String[] args) {
         (new DuhBot()).start();
@@ -37,22 +33,25 @@ public class DuhBot implements ServiceMediator {
 
         PluginLoader loader = new PluginLoader(helpRegister);
         loader.loadAllPlugins();
-        ImmutableList<ListenerAdapter> allPlugins =
+        ImmutableList<ListenerAdapter> allListeningPlugins =
                 new ImmutableList.Builder<ListenerAdapter>()
                 .add(helpPlugin).add(logPlugin)
                 .addAll(loader.getLoadedListeners()).build();
+
+        mediator =
+                new UnsynchronizedMediator(loader.getLoadedServiceProviders());
+
         ImmutableList<ServiceConsumerPlugin> consumers =
                 loader.getLoadedServiceConsumers();
         for (ServiceConsumerPlugin consumer : consumers) {
             try {
-                consumer.setInteraactionMediator(this);
+                consumer.setInteraactionMediator(mediator);
             } catch (Exception e) {
                 System.err.println(Utils.formatLogMessage(
                         "Failed to register mediator with plugin"));
                 e.printStackTrace();
             }
         }
-        servicePlugins = loader.getLoadedServiceProviders();
 
         for (IRCServer serverDef : config.servers) {
             Configuration.Builder newConfig = new Configuration.Builder();
@@ -74,7 +73,7 @@ public class DuhBot implements ServiceMediator {
                     newConfig.addAutoJoinChannel(channel.channel);
                 }
             }
-            for (ListenerAdapter plugin : allPlugins) {
+            for (ListenerAdapter plugin : allListeningPlugins) {
                 newConfig.addListener(plugin);
             }
             newConfig.setAutoReconnect(true);
@@ -85,28 +84,5 @@ public class DuhBot implements ServiceMediator {
 
     public void start() {
         multiBot.start();
-    }
-
-    @Override
-    public ServiceResponse<?> interact(String endpoint, String path, Object request, Class<?> responseClass) throws NoSuchEndpointException, NoSuchPathForEndpointException, MismatchedServiceRequestClass, MismatchedServiceResponseClass {
-        if (servicePlugins == null || !servicePlugins.containsKey(endpoint)) {
-            throw new NoSuchEndpointException(endpoint);
-        }
-        ServiceProviderPlugin interactive = servicePlugins.get(endpoint);
-        Map<String, ServiceEndpointDefinition> interactions = interactive.getInteractions();
-        if (interactions == null || !interactions.containsKey(path)) {
-            throw new NoSuchPathForEndpointException(endpoint, path);
-        }
-        ServiceEndpointDefinition interaction = interactions.get(path);
-        Class<?> prescribedResponse = interaction.getResponseClass();
-        if (prescribedResponse != responseClass) {
-            throw new MismatchedServiceResponseClass(prescribedResponse, responseClass);
-        }
-        Class<?> requiredInput = interaction.getRequestClass();
-        if (request.getClass() != requiredInput) {
-            throw new MismatchedServiceRequestClass(requiredInput, request.getClass());
-        }
-        ServiceResponse response = interaction.interact(request);
-        return response;
     }
 }
