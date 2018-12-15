@@ -1,6 +1,11 @@
 package org.duh102.duhbot;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
 public class Utils {
+	public static DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd" +
+			".HH:mm:ss.SSS");
 	public static String toCSV(String[] list) {
 		if (list.length > 0) {
 			if (list.length > 1) {
@@ -45,5 +50,10 @@ public class Utils {
 			items[i] = list[i].toString();
 		}
 		return toNCSV(items);
+	}
+
+	public static String formatLogMessage(String message) {
+		java.util.Date date = new java.util.Date();
+		return String.format("%s | %s",dateFormat.format(date), message);
 	}
 }

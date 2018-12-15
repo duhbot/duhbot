@@ -2,11 +2,11 @@ package org.duh102.duhbot.data;
 
 import java.io.*;
 import java.net.*;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.jar.*;
 
 import com.google.common.collect.ImmutableMap;
+import org.duh102.duhbot.Utils;
 import org.duh102.duhbot.exception.DuplicateEndpointException;
 import org.pircbotx.hooks.*;
 
@@ -50,24 +50,25 @@ public class PluginLoader {
 		return plugins;
 	}
 
-	public ImmutableList<ListenerAdapter> getLoadedPlugins() {
-		return new ImmutableList.Builder<ListenerAdapter>().addAll(this.listenerPlugins).build();
+	public ImmutableList<ListenerAdapter> getLoadedListeners() {
+		return new ImmutableList.Builder<ListenerAdapter>()
+				.addAll(this.listenerPlugins).build();
 	}
-	public ImmutableMap<String, ServiceProviderPlugin> getLoadedInteractions() {
-		return new ImmutableMap.Builder<String, ServiceProviderPlugin>().putAll(this.providerPlugins).build();
+	public ImmutableMap<String, ServiceProviderPlugin> getLoadedServiceProviders() {
+		return new ImmutableMap.Builder<String, ServiceProviderPlugin>()
+				.putAll(this.providerPlugins).build();
 	}
-	public ImmutableList<ServiceConsumerPlugin> getLoadedInteractors() {
-		return new ImmutableList.Builder<ServiceConsumerPlugin>().addAll(this.consumerPlugins).build();
+	public ImmutableList<ServiceConsumerPlugin> getLoadedServiceConsumers() {
+		return new ImmutableList.Builder<ServiceConsumerPlugin>()
+				.addAll(this.consumerPlugins).build();
 	}
 
 	private static URL filenameToURL(String filename) {
 		try {
 			return (new File(PLUGIN_LOC + filename)).toURI().toURL();
 		} catch (MalformedURLException mfue) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to turn filename %s into a URL\n",
-					timestamp.toString(), filename);
+			System.err.println(Utils.formatLogMessage(String.format("Unable to "
+					+ "turn filename %s into a URL", filename)));
 			mfue.printStackTrace();
 			return null;
 		}
@@ -79,107 +80,99 @@ public class PluginLoader {
 			return;
 		}
 		URL[] pluginURLs =
-				plugins.stream().map(PluginLoader::filenameToURL).filter(item -> item != null).toArray(URL[]::new);
+				plugins.stream().map(PluginLoader::filenameToURL).filter(
+						item -> item != null).toArray(URL[]::new);
+		System.err.println(Utils.formatLogMessage(String.format("Set plugin classpath to %s",
+				Arrays.toString(pluginURLs))));
 		URLClassLoader ucl = new URLClassLoader(pluginURLs,
 				getClass().getClassLoader());
 		for (String plugin : plugins) {
-			java.util.Date date = new java.util.Date();
-			Timestamp derp = new Timestamp(date.getTime());
-			System.err.printf("%s | Loading: %s\n", derp.toString(), plugin);
-			ListenerAdapter newPlug = loadPlugin(plugin, ucl);
-			if( newPlug != null ) {
-				this.listenerPlugins.add(newPlug);
-			}
-		},
+			System.err.println(Utils.formatLogMessage(String.format("Loading" +
+					" %s", plugin)));
+			loadPlugin(plugin, ucl);
+		}
 	}
 
-	public ListenerAdapter loadPlugin(String filename,
-									  ClassLoader classLoader) {
-		ListenerAdapter toRet = null;
+	public DuhbotFunction loadClass(String filename, ClassLoader classLoader)
+			throws IOException, ClassNotFoundException,
+			InstantiationException, IllegalAccessException {
+		URL pluginURL = (new File(PLUGIN_LOC + filename)).toURI().toURL();
+		URL u = new URL("jar", "", pluginURL + "!/");
+		JarURLConnection uc = (JarURLConnection) u.openConnection();
+		Attributes attr = uc.getMainAttributes();
+		String mainClassName = (attr != null ?
+				attr.getValue(Attributes.Name.MAIN_CLASS) : null);
+		@SuppressWarnings("rawtypes")
+		Class<?> c = classLoader.loadClass(mainClassName);
+		DuhbotFunction func = (DuhbotFunction) c.newInstance();
+		return func;
+	}
+
+	public void handleListeningPlugin(ListeningPlugin listeningPlugin) {
+		HashMap<String, String> helpFuncs = listeningPlugin.getHelpFunctions();
+		int helpTopics = helpFuncs.size();
+		help.registerHelp(HelpFunction.properHelpFunction(listeningPlugin.getPluginName()),
+				helpFuncs);
+		listenerPlugins.add(listeningPlugin.getAdapter());
+		if (helpTopics > 0) {
+			System.err.println(Utils.formatLogMessage(String.format(
+					"Registered %d help functions", helpTopics)));
+		}
+	}
+
+	public void handleServiceProviderPlugin(ServiceProviderPlugin serviceProvider) {
+		String endpoint = serviceProvider.getEndpointRoot();
 		try {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			URL pluginURL = (new File(PLUGIN_LOC + filename)).toURI().toURL();
-			URL u = new URL("jar", "", pluginURL + "!/");
-			JarURLConnection uc = (JarURLConnection) u.openConnection();
-			Attributes attr = uc.getMainAttributes();
-			String mainClassName = (attr != null ? attr.getValue(Attributes.Name.MAIN_CLASS) : null);
-			@SuppressWarnings("rawtypes")
-			Class<?> c = classLoader.loadClass(mainClassName);
-			DuhbotFunction func = (DuhbotFunction) c.newInstance();
+			if (providerPlugins.containsKey(endpoint)) {
+				throw new DuplicateEndpointException(endpoint);
+			}
+			providerPlugins.put(endpoint, serviceProvider);
+			System.err.println(Utils.formatLogMessage(String.format(
+					"Registered service endpoint \"%s\"", endpoint)));
+		} catch( DuplicateEndpointException dee ) {
+			System.err.println(Utils.formatLogMessage(String.format(
+					"Endpoint \"%s\" already registered, cannot re-register",
+					endpoint)));
+		}
+	}
+
+	public void handleServiceConsumerPlugin(ServiceConsumerPlugin serviceConsumer) {
+		consumerPlugins.add(serviceConsumer);
+	}
+
+	public void loadPlugin(String filename, ClassLoader classLoader) {
+		try {
+
+			DuhbotFunction func = loadClass(filename, classLoader);
 
 			if (func != null) {
 				allPlugins.add(func);
 			}
 
+			//A plugin that listens to chat events
 			if( func instanceof ListeningPlugin ) {
-				ListeningPlugin listeningPlugin = (ListeningPlugin)func;
-				HashMap<String, String> helpFuncs = listeningPlugin.getHelpFunctions();
-				int helpTopics = helpFuncs.size();
-				help.registerHelp(HelpFunction.properHelpFunction(func.getPluginName()), helpFuncs);
-				toRet = listeningPlugin.getAdapter();
-				if (helpTopics > 0) {
-					System.err.printf("%s | Loaded: %s; registered %d help functions\n", timestamp.toString(), filename,
-							helpTopics);
-				} else {
-					System.err.printf("%s | Loaded: %s\n", timestamp.toString(), filename);
-				}
+				ListeningPlugin listeningPlugin = (ListeningPlugin) func;
+				handleListeningPlugin(listeningPlugin);
 			}
+			//A plugin that provides service endpoints for plugins to use
 			if( func instanceof ServiceProviderPlugin) {
-				try {
-					ServiceProviderPlugin serviceProvider = (ServiceProviderPlugin) func;
-					String endpoint = serviceProvider.getEndpointRoot();
-					try {
-						if (providerPlugins.containsKey(endpoint)) {
-							throw new DuplicateEndpointException(endpoint);
-						}
-						providerPlugins.put(endpoint, serviceProvider);
-					} catch( DuplicateEndpointException dee ) {
-						System.err.printf("%s | Endpoint %s already " +
-								"registered\n", timestamp.toString());
-					}
-				} catch( Exception e ) {
-					System.err.printf("%s | Unable to register  service " +
-									"provider\n",
-							timestamp.toString());
-					e.printStackTrace();
-				}
+				ServiceProviderPlugin serviceProvider =
+						(ServiceProviderPlugin) func;
+				handleServiceProviderPlugin(serviceProvider);
 			}
+			//A plugin that calls out to other plugins' endpoints
 			if( func instanceof ServiceConsumerPlugin) {
-				try {
-					consumerPlugins.add((ServiceConsumerPlugin)func);
-				} catch( Exception e ) {
-					System.err.printf("%s | Unable to register plugin for " +
-							"interacting with other listenerPlugins: %s\n",
-							timestamp.toString(), e.getLocalizedMessage());
-				}
+				ServiceConsumerPlugin serviceConsumer =
+						(ServiceConsumerPlugin) func;
+				handleServiceConsumerPlugin(serviceConsumer);
 			}
-		} catch (IOException ioe) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
-			ioe.printStackTrace();
-		} catch (ClassNotFoundException cnfe) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
-			cnfe.printStackTrace();
-		} catch (InstantiationException ie) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
-			ie.printStackTrace();
-		} catch (IllegalAccessException iae) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
-			iae.printStackTrace();
+			System.err.println(Utils.formatLogMessage(String.format("Loaded " +
+					"\"%s\" from %s\n", func.getPluginName(),
+					filename)));
 		} catch( Exception e ) {
-			java.util.Date date = new java.util.Date();
-			Timestamp timestamp = new Timestamp(date.getTime());
-			System.err.printf("%s | Unable to load: %s\n", timestamp.toString(), filename);
+			System.err.println(Utils.formatLogMessage(String.format(
+					"Unable to load %s", filename)));
 			e.printStackTrace();
 		}
-		return toRet;
 	}
 }
