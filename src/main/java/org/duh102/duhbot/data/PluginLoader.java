@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.jar.*;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
 import org.duh102.duhbot.Utils;
@@ -39,23 +40,28 @@ public class PluginLoader {
 		this(PLUGIN_LOC);
 	}
 
-	public List<String> getPluginsInDir() {
-		String filename;
+	protected static URL fileToURL(File file) {
+		try{
+			return file.toURI().toURL();
+		} catch( MalformedURLException mue ) {
+			System.err.printf("Exception while turning file %s into URL\n",
+					file.toString());
+			mue.printStackTrace();
+			return null;
+		}
+	}
+
+	public List<URL> getPluginsInDir() {
 		File folder = new File(pluginLocation);
 		File[] listOfFiles = folder.listFiles();
 		if (listOfFiles == null) {
 			return null;
 		}
-		ArrayList<String> plugins = new ArrayList<String>();
-		for (int i = 0; i < listOfFiles.length; i++) {
-			if (listOfFiles[i].isFile()) {
-				filename = listOfFiles[i].getName();
-				if (filename.toLowerCase().endsWith(".jar")) {
-					plugins.add(filename);
-				}
-			}
-		}
-		return plugins;
+		return Arrays.asList(listOfFiles).stream().filter(
+				(file) -> file.getName().toLowerCase().endsWith(".jar"))
+				.map(PluginLoader::fileToURL)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toList());
 	}
 
 	public ImmutableList<ListenerAdapter> getLoadedListeners() {
@@ -71,31 +77,13 @@ public class PluginLoader {
 				.addAll(this.consumerPlugins).build();
 	}
 
-	protected static URL filenameToURL(Pair<String, String> filepack) {
-		String root = filepack.getFirst();
-		String filename = filepack.getSecond();
-		try {
-			return (new File(root, filename)).toURI().toURL();
-		} catch (MalformedURLException mfue) {
-			System.err.println(Utils.formatLogMessage(String.format("Unable to "
-					+ "turn filename %s into a URL", filename)));
-			mfue.printStackTrace();
-			return null;
-		}
-	}
-
-	protected URLClassLoader makeClassLoader(List<String> jars) {
-		URL[] pluginURLs =
-				jars.stream().map((filename) ->
-						new Pair<>(pluginLocation, filename))
-						.map(PluginLoader::filenameToURL).
-						filter(item -> item != null)
-						.toArray(URL[]::new);
-		return new URLClassLoader(pluginURLs, getClass().getClassLoader());
+	protected URLClassLoader makeClassLoader(List<URL> pluginURLs) {
+		return new URLClassLoader(pluginURLs.toArray(new URL[0]),
+				getClass().getClassLoader());
 	}
 
 	public void loadAllPlugins() {
-		List<String> plugins = getPluginsInDir();
+		List<URL> plugins = getPluginsInDir();
 		if (plugins == null) {
 			return;
 		}
@@ -103,15 +91,14 @@ public class PluginLoader {
 		URL[] pluginURLs = ucl.getURLs();
 		System.err.println(Utils.formatLogMessage(String.format("Set plugin classpath to %s",
 				Arrays.toString(pluginURLs))));
-		for (String plugin : plugins) {
+		for (URL plugin : plugins) {
 			loadPlugin(plugin, ucl);
 		}
 	}
 
-	public DuhbotFunction loadClass(String filename, ClassLoader classLoader)
+	public DuhbotFunction loadClass(URL pluginURL, ClassLoader classLoader)
 			throws IOException, ClassNotFoundException,
 			InstantiationException, IllegalAccessException {
-		URL pluginURL = (new File(pluginLocation, filename)).toURI().toURL();
 		URL u = new URL("jar", "", pluginURL + "!/");
 		JarURLConnection uc = (JarURLConnection) u.openConnection();
 		Attributes attr = uc.getMainAttributes();
@@ -145,11 +132,18 @@ public class PluginLoader {
 		consumerPlugins.add(serviceConsumer);
 	}
 
-	public void loadPlugin(String filename, ClassLoader classLoader) {
+	public void loadPlugin(URL pluginURL, ClassLoader classLoader) {
+		String filename;
+		try {
+			File pluginFile = new File(pluginURL.toURI());
+			filename = pluginFile.getName();
+		} catch( URISyntaxException use ) {
+			filename = "(bad uri)";
+		}
 		try {
 			System.err.println(Utils.formatLogMessage(String.format("Loading" +
 					" %s", filename)));
-			DuhbotFunction func = loadClass(filename, classLoader);
+			DuhbotFunction func = loadClass(pluginURL, classLoader);
 
 			if (func != null) {
 				allPlugins.add(func);

@@ -21,18 +21,17 @@ import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.stream.Collectors;
 
-import static org.duh102.duhbot.data.PluginLoader.filenameToURL;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestPluginLoader {
-    List<File> plugins;
+    List<URL> plugins;
     Path pluginPath;
     public TestPluginLoader() {
         try {
             URI uri = new File("src/test/resources").toURI();
             pluginPath = Paths.get(uri);
             plugins =
-                    Files.list(pluginPath).map((path) -> path.toFile()).filter((file) -> file.getName().endsWith(".jar")).collect(Collectors.toList());
+                    Files.list(pluginPath).map((path) -> path.toFile()).filter((file) -> file.getName().endsWith(".jar")).map(PluginLoader::fileToURL).collect(Collectors.toList());
         } catch(Exception e) {
             e.printStackTrace();
             plugins = new ArrayList<>();
@@ -43,10 +42,8 @@ public class TestPluginLoader {
     public void testGetPluginsInDir() {
         PluginLoader loader = new PluginLoader(pluginPath.toString());
 
-        List<String> foundPlugins = loader.getPluginsInDir();
-        assertEquals(plugins.size(), foundPlugins.size());
-        assertEquals(plugins.stream().map((file) -> file.getName()).collect(Collectors.toList()),
-                foundPlugins);
+        List<URL> foundPlugins = loader.getPluginsInDir();
+        assertEquals(plugins, foundPlugins);
     }
 
     @Test
@@ -98,28 +95,14 @@ public class TestPluginLoader {
         assertEquals(plugin.getHelpFunctions().size(), helpFunctions);
     }
     @Test
-    public void testFilenameToURL() throws Exception {
-        String root = "/some/path/to", filename="a.file";
-        Pair<String, String> pair = new Pair<>(root, filename);
-        URL expected = new File(root, filename).getCanonicalFile().toURI().toURL();
-        assertEquals(expected, filenameToURL(pair));
-        root = "/some/path/to/";
-        expected = new File(root, filename).getCanonicalFile().toURI().toURL();
-        assertEquals(expected, filenameToURL(pair));
-        root = "/some/././././../some/path/to/";
-        expected = new File(root, filename).getCanonicalFile().toURI().toURL();
-        assertEquals(expected, filenameToURL(pair));
-    }
-    @Test
     public void testMakeClassLoader() throws Exception {
         PluginLoader loader = new PluginLoader(pluginPath.toString());
-        List<String> oneJar =
-                plugins.subList(0,1).stream().map(File::getName).collect(Collectors.toList());
+        List<URL> oneJar = plugins.subList(0,1);
         URLClassLoader classLoader = loader.makeClassLoader(oneJar);
         URL[] classLoaderURLs = classLoader.getURLs();
         assertTrue(Files.isReadable(Paths.get(classLoaderURLs[0].toURI())));
         assertEquals(1, classLoaderURLs.length);
-        assertTrue(classLoaderURLs[0].toString().contains(oneJar.get(0)));
+        assertTrue(classLoaderURLs[0].toString().contains(oneJar.get(0).toString()));
         URL u = new URL("jar", "", classLoaderURLs[0].toString() + "!/");
         JarURLConnection uc = (JarURLConnection) u.openConnection();
         Attributes attr = uc.getMainAttributes();
@@ -136,11 +119,9 @@ public class TestPluginLoader {
     @Test
     public void testLoadClass() throws Exception {
         PluginLoader loader = new PluginLoader(pluginPath.toString());
-        List<File> oneJarFile = plugins.subList(0,1);
-        List<String> oneJar =
-                oneJarFile.stream().map(File::getName).collect(Collectors.toList());
+        List<URL> oneJar = plugins.subList(0,1);
         URLClassLoader classLoader = loader.makeClassLoader(oneJar);
-        DuhbotFunction aFunction = loader.loadClass(oneJarFile.get(0).getName(),
+        DuhbotFunction aFunction = loader.loadClass(oneJar.get(0),
                 classLoader);
         //Similar to testLoadAllPlugins, fragile and depends on keeping up to
         // date with the plugins
