@@ -1,10 +1,19 @@
 package org.duh102.duhbot.exception;
 
 public class DuplicateEndpointException extends Exception {
-    public DuplicateEndpointException(String message) {
-        super(message);
+    private String endpoint;
+    private static String formatMessage(String endpoint) {
+        return String.format("Endpoint %s already registered", endpoint);
     }
-    public DuplicateEndpointException(String message, Throwable throwable) {
-        super(message, throwable);
+    public DuplicateEndpointException(String endpoint) {
+        super(formatMessage(endpoint));
+        this.endpoint = endpoint;
+    }
+    public DuplicateEndpointException(String endpoint, Throwable throwable) {
+        super(formatMessage(endpoint), throwable);
+        this.endpoint = endpoint;
+    }
+    public String getEndpoint() {
+        return endpoint;
     }
 }

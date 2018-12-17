@@ -1,8 +1,5 @@
 package org.duh102.duhbot;
 
-import java.util.Map;
-
-import com.google.common.collect.ImmutableMap;
 import org.pircbotx.*;
 import org.pircbotx.delay.AdaptingDelay;
 import org.pircbotx.hooks.*;
@@ -26,17 +23,11 @@ public class DuhBot {
         config = new ConfigData();
         multiBot = new MultiBotManager();
 
-        HelpFunction helpRegister = new HelpFunction();
-        ListenerAdapter helpPlugin = helpRegister.getAdapter();
-        LogBotListener defaultLogger = new LogBotListener();
-        ListenerAdapter logPlugin = defaultLogger.getAdapter();
-
-        PluginLoader loader = new PluginLoader(helpRegister);
+        PluginLoader loader = new PluginLoader();
         loader.loadAllPlugins();
         ImmutableList<ListenerAdapter> allListeningPlugins =
                 new ImmutableList.Builder<ListenerAdapter>()
-                .add(helpPlugin).add(logPlugin)
-                .addAll(loader.getLoadedListeners()).build();
+                        .addAll(loader.getLoadedListeners()).build();
 
         mediator =
                 new UnsynchronizedMediator(loader.getLoadedServiceProviders());
@@ -45,7 +36,7 @@ public class DuhBot {
                 loader.getLoadedServiceConsumers();
         for (ServiceConsumerPlugin consumer : consumers) {
             try {
-                consumer.setInteraactionMediator(mediator);
+                consumer.setInteractionMediator(mediator);
             } catch (Exception e) {
                 System.err.println(Utils.formatLogMessage(
                         "Failed to register mediator with plugin"));

@@ -65,7 +65,7 @@ public class HelpFunction extends ListenerAdapter {
 		return helpLookup;
 	}
 
-	public void registerHelp(String functionName, HashMap<String, String> helpMap) {
+	public void registerHelp(String functionName, Map<String, String> helpMap) {
 		String realFunctionName = properHelpFunction(functionName);
 		if (!pluginListing.contains(realFunctionName)) {
 			pluginListing.add(realFunctionName);
