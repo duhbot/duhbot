@@ -16,7 +16,7 @@ public class LogBotListener extends ListenerAdapter implements DuhbotFunction, L
 		return (DuhbotFunction) (new LogBotListener());
 	}
 
-	public HashMap<String, String> getHelpFunctions() {
+	public Map<String, String> getHelpFunctions() {
 		HashMap<String, String> helpFunctions = new HashMap<String, String>();
 		helpFunctions.put(HelpFunction.properHelpFunction("Default"), "This function has no user-accessible functions");
 		return helpFunctions;
