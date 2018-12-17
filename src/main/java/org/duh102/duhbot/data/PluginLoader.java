@@ -71,11 +71,11 @@ public class PluginLoader {
 				.addAll(this.consumerPlugins).build();
 	}
 
-	private static URL filenameToURL(Pair<String, String> filepack) {
+	protected static URL filenameToURL(Pair<String, String> filepack) {
 		String root = filepack.getFirst();
 		String filename = filepack.getSecond();
 		try {
-			return (new File(root + filename)).toURI().toURL();
+			return (new File(root, filename)).toURI().toURL();
 		} catch (MalformedURLException mfue) {
 			System.err.println(Utils.formatLogMessage(String.format("Unable to "
 					+ "turn filename %s into a URL", filename)));
@@ -84,7 +84,7 @@ public class PluginLoader {
 		}
 	}
 
-	private URLClassLoader makeClassLoader(List<String> jars) {
+	protected URLClassLoader makeClassLoader(List<String> jars) {
 		URL[] pluginURLs =
 				jars.stream().map((filename) ->
 						new Pair<>(pluginLocation, filename))
@@ -92,21 +92,6 @@ public class PluginLoader {
 						filter(item -> item != null)
 						.toArray(URL[]::new);
 		return new URLClassLoader(pluginURLs, getClass().getClassLoader());
-	}
-
-	private class Pair<U, V> {
-		final U first;
-		final V second;
-		public Pair(U first, V second) {
-			this.first = first;
-			this.second = second;
-		}
-		public U getFirst() {
-			return first;
-		}
-		public V getSecond() {
-			return second;
-		}
 	}
 
 	public void loadAllPlugins() {
@@ -126,7 +111,7 @@ public class PluginLoader {
 	public DuhbotFunction loadClass(String filename, ClassLoader classLoader)
 			throws IOException, ClassNotFoundException,
 			InstantiationException, IllegalAccessException {
-		URL pluginURL = (new File(pluginLocation + filename)).toURI().toURL();
+		URL pluginURL = (new File(pluginLocation, filename)).toURI().toURL();
 		URL u = new URL("jar", "", pluginURL + "!/");
 		JarURLConnection uc = (JarURLConnection) u.openConnection();
 		Attributes attr = uc.getMainAttributes();
