@@ -32,8 +32,11 @@ public class PluginLoader {
 		listenerPlugins = new ArrayList<>();
 		providerPlugins = new HashMap<>();
 		consumerPlugins = new ArrayList<>();
+		LogBotListener defaultLogger = new LogBotListener();
+		ListenerAdapter logPlugin = defaultLogger.getAdapter();
 
 		listenerPlugins.add(help.getAdapter());
+		listenerPlugins.add(logPlugin);
 	}
 
 	public PluginLoader() {

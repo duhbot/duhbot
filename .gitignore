@@ -22,3 +22,5 @@ crashlytics-build.properties
 fabric.properties
 
 /.attach*
+
+irc_log.db

@@ -86,12 +86,13 @@ public class TestPluginLoader {
         PluginLoader loader = new PluginLoader(pluginPath.toString());
         SimpleListeningPlugin plugin = new SimpleListeningPlugin();
         List<ListenerAdapter> adapters = loader.getLoadedListeners();
-        assertEquals(1, adapters.size());
+        assertEquals(2, adapters.size());
         assertTrue(adapters.get(0) instanceof HelpFunction);
+        assertTrue(adapters.get(1) instanceof LogBotListener);
         int helpFunctions = loader.handleListeningPlugin(plugin);
         adapters = loader.getLoadedListeners();
-        assertEquals(2, adapters.size());
-        assertEquals(plugin.getAdapter(), adapters.get(1));
+        assertEquals(3, adapters.size());
+        assertEquals(plugin.getAdapter(), adapters.get(2));
         assertEquals(plugin.getHelpFunctions().size(), helpFunctions);
     }
     @Test
@@ -141,14 +142,16 @@ public class TestPluginLoader {
                 loader.getLoadedServiceConsumers();
         Map<String, ServiceProviderPlugin> providers =
                 loader.getLoadedServiceProviders();
-        assertEquals(2, listeners.size());
+        assertEquals(3, listeners.size());
         assertEquals(1, consumers.size());
         assertEquals(1, providers.size());
         ListenerAdapter help = listeners.get(0);
-        ListenerAdapter templateAdapter = listeners.get(1);
+        ListenerAdapter loggerAdapter = listeners.get(1);
+        ListenerAdapter templateAdapter = listeners.get(2);
         ServiceConsumerPlugin templateConsumer = consumers.get(0);
         ServiceProviderPlugin templateProvider = providers.get("service-provider-example");
         assertEquals(HelpFunction.class, help.getClass());
+        assertEquals(LogBotListener.class, loggerAdapter.getClass());
         assertTrue(templateAdapter instanceof DuhbotFunction);
         DuhbotFunction templatePlugin = (DuhbotFunction) templateAdapter;
         assertEquals("Plugin Template", templatePlugin.getPluginName());
